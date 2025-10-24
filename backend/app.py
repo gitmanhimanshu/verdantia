@@ -40,9 +40,19 @@ def create_app():
     app.config["CERT_DIR"] = os.getenv("CERT_DIR", "certs")
     app.config["FRONTEND_DIR"] = os.getenv("FRONTEND_DIR", os.path.join(os.getcwd(), "frontend", "dist"))
 
+    # CORS Configuration - FIXED
     cors_origins = os.getenv("CORS_ORIGINS", "*")
-    CORS(app, supports_credentials=True,
-         origins=cors_origins.split(",") if cors_origins != "*" else "*")
+    if cors_origins == "*":
+        allowed_origins = "*"
+    else:
+        allowed_origins = [origin.strip() for origin in cors_origins.split(",")]
+
+    CORS(app, 
+         resources={r"/api/*": {"origins": allowed_origins}},
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         expose_headers=["Content-Type", "Authorization"])
 
     JWTManager(app)
 
