@@ -5,13 +5,14 @@ from flask_jwt_extended import JWTManager
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from dotenv import load_dotenv
+import certifi
 
 load_dotenv()
 
 
 def _init_db():
     """
-    Initialize Mongo client and DB.
+    Initialize Mongo client and DB with proper TLS configuration.
     Supports both:
     - MONGO_URI with DB in URI (e.g., mongodb://localhost:27017/verdantia)
     - MONGO_URI + MONGO_DB (separate db name)
@@ -19,7 +20,24 @@ def _init_db():
     mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/verdantia")
     mongo_db = os.getenv("MONGO_DB")
 
-    client = MongoClient(mongo_uri)
+    # Create client with explicit TLS settings for MongoDB Atlas
+    client = MongoClient(
+        mongo_uri,
+        tls=True,
+        tlsCAFile=certifi.where(),
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=20000,
+        socketTimeoutMS=20000,
+        retryWrites=True
+    )
+
+    # Test the connection
+    try:
+        client.admin.command('ping')
+        print("✓ MongoDB connection successful!")
+    except Exception as e:
+        print(f"✗ MongoDB connection failed: {e}")
+        raise
 
     if mongo_db:
         db = client[mongo_db]
@@ -40,7 +58,7 @@ def create_app():
     app.config["CERT_DIR"] = os.getenv("CERT_DIR", "certs")
     app.config["FRONTEND_DIR"] = os.getenv("FRONTEND_DIR", os.path.join(os.getcwd(), "frontend", "dist"))
 
-    # CORS Configuration - FIXED
+    # CORS Configuration
     cors_origins = os.getenv("CORS_ORIGINS", "*")
     if cors_origins == "*":
         allowed_origins = "*"
@@ -60,9 +78,14 @@ def create_app():
     os.makedirs(app.config["CERT_DIR"], exist_ok=True)
 
     # DB
-    client, db = _init_db()
-    app.db_client = client
-    app.db = db
+    try:
+        client, db = _init_db()
+        app.db_client = client
+        app.db = db
+    except Exception as e:
+        print(f"Failed to initialize database: {e}")
+        # You might want to exit here or handle it differently
+        raise
 
     # Blueprints
     from blueprints.auth import bp as auth_bp
@@ -135,4 +158,4 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)),
-            debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")
+            debug=os.getenv("FLASK_DEBUG", "true").lower() == "true")
