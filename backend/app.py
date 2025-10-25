@@ -203,4 +203,5 @@ app = create_app()
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    print(f"Starting server on port {port}")
     app.run(host="0.0.0.0", port=port, debug=debug)

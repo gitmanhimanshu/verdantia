@@ -9,7 +9,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: PORT
-        value: 10000
+        value: 5000
       - key: RENDER
         value: true
       - key: PYTHON_ENV
