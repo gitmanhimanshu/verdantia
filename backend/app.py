@@ -19,17 +19,41 @@ def _init_db():
     """
     mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/verdantia")
     mongo_db = os.getenv("MONGO_DB")
+    
+    # Check if we're in production (Render environment)
+    is_production = os.getenv("RENDER", False) or os.getenv("PYTHON_ENV") == "production"
 
     # Create client with explicit TLS settings for MongoDB Atlas
-    client = MongoClient(
-        mongo_uri,
-        tls=True,
-        tlsCAFile=certifi.where(),
-        serverSelectionTimeoutMS=30000,
-        connectTimeoutMS=20000,
-        socketTimeoutMS=20000,
-        retryWrites=True
-    )
+    if is_production:
+        # Production configuration for Render
+        client = MongoClient(
+            mongo_uri,
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=20000,
+            socketTimeoutMS=20000,
+            retryWrites=True,
+            retryReads=True,
+            maxPoolSize=10,
+            minPoolSize=1,
+            maxIdleTimeMS=30000,
+            waitQueueTimeoutMS=5000
+        )
+    else:
+        # Development configuration with explicit TLS
+        client = MongoClient(
+            mongo_uri,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            tlsAllowInvalidCertificates=False,
+            tlsAllowInvalidHostnames=False,
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=20000,
+            socketTimeoutMS=20000,
+            retryWrites=True,
+            retryReads=True,
+            maxPoolSize=10,
+            minPoolSize=1
+        )
 
     # Test the connection
     try:
@@ -37,7 +61,27 @@ def _init_db():
         print("✓ MongoDB connection successful!")
     except Exception as e:
         print(f"✗ MongoDB connection failed: {e}")
-        raise
+        # Try alternative connection method
+        try:
+            print("Attempting alternative connection method...")
+            if is_production:
+                # Try with minimal configuration for production
+                client = MongoClient(mongo_uri)
+            else:
+                # Try with different TLS settings for development
+                client = MongoClient(
+                    mongo_uri,
+                    tls=True,
+                    tlsInsecure=True,
+                    serverSelectionTimeoutMS=10000,
+                    connectTimeoutMS=10000,
+                    socketTimeoutMS=10000
+                )
+            client.admin.command('ping')
+            print("✓ Alternative MongoDB connection successful!")
+        except Exception as e2:
+            print(f"✗ Alternative MongoDB connection also failed: {e2}")
+            raise e  # Raise the original error
 
     if mongo_db:
         db = client[mongo_db]
