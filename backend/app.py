@@ -21,15 +21,21 @@ def _init_db():
     mongo_db = os.getenv("MONGO_DB")
 
     # Create client with explicit TLS settings for MongoDB Atlas
-    client = MongoClient(
-        mongo_uri,
-        tls=True,
-        tlsCAFile=certifi.where(),
-        serverSelectionTimeoutMS=30000,
-        connectTimeoutMS=20000,
-        socketTimeoutMS=20000,
-        retryWrites=True
-    )
+    # For Vercel, we need to handle the connection more carefully
+    try:
+        client = MongoClient(
+            mongo_uri,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=20000,
+            socketTimeoutMS=20000,
+            retryWrites=True
+        )
+    except Exception as e:
+        print(f"MongoDB connection error: {e}")
+        # For Vercel serverless, we might need to handle this differently
+        raise
 
     # Test the connection
     try:
