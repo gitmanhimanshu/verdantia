@@ -6,3 +6,4 @@ python-dotenv==1.0.1
 reportlab==4.2.2
 Werkzeug==3.0.3
 gunicorn==21.2.0
+certifi==2025.10.5
