@@ -21,18 +21,14 @@ def _init_db():
     mongo_db = os.getenv("MONGO_DB")
 
     # Create client with explicit TLS settings for MongoDB Atlas
-    # Optimized for Vercel serverless environment
     client = MongoClient(
         mongo_uri,
         tls=True,
         tlsCAFile=certifi.where(),
-        serverSelectionTimeoutMS=10000,  # Reduced for serverless
-        connectTimeoutMS=10000,         # Reduced for serverless
-        socketTimeoutMS=10000,          # Reduced for serverless
-        retryWrites=True,
-        maxPoolSize=1,                  # Important for serverless
-        minPoolSize=0,                  # Important for serverless
-        maxIdleTimeMS=30000             # Close connections after 30s
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=20000,
+        socketTimeoutMS=20000,
+        retryWrites=True
     )
 
     # Test the connection
@@ -160,9 +156,7 @@ def create_app():
 
 app = create_app()
 
-# Vercel compatibility
-handler = app
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)),
-            debug=os.getenv("FLASK_DEBUG", "true").lower() == "true")
+    port = int(os.getenv("PORT", 5000))
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug)
